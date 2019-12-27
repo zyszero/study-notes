@@ -1,0 +1,206 @@
+[[beans-factory-autowire]]
+=== Autowiring Collaborators
+>>>>>>> 哺乳类
+=== 自动装配协作者
+<<<<<<< 哺乳类
+
+The Spring container can autowire relationships between collaborating beans. You can
+let Spring resolve collaborators (other beans) automatically for your bean by
+inspecting the contents of the `ApplicationContext`. Autowiring has the following
+advantages:
+>>>>>>> 哺乳类
+Spring容器能自动装配协作beans之间的关系。你可以通过检查`ApplicationContext`的内容，让Spring为你的bean自动解析协作者（其他的beans）。自动装配有以下优点：
+<<<<<<< 哺乳类
+
+Autowiring can significantly reduce the need to specify properties or constructor
+  arguments. (Other mechanisms such as a bean template
+  <<beans-child-bean-definitions,discussed elsewhere in this chapter>> are also valuable
+  in this regard.)
+>>>>>>> 哺乳类
+自动装配可以大大减少指定属性或构造函数参数的需要。（在这方面，对于其他机制，例如<<beans-child-bean-definitions,discussed elsewhere in this chapter>>本章其他地方讨论的bean模板，也很有价值。）
+<<<<<<< 哺乳类
+Autowiring can update a configuration as your objects evolve. For example, if you need  to add a dependency to a class, that dependency can be satisfied automatically without  you needing to modify the configuration. Thus autowiring can be especially useful during development, without negating the option of switching to explicit wiring when the code base becomes more stable.
+>>>>>>> 哺乳类
+随着你的对象的加载，自动装配可以更新配置。例如，如果你需要为一个类添加依赖项，无需修改配置即可自动满足依赖关系。因此，自动装配在开发过程中非常有用，当代码库变得更稳定时，自动装配可以避免切换到显示引用的选项。
+<<<<<<< 哺乳类
+ 
+When using XML-based configuration metadata (see <<beans-factory-collaborators>>), you can specify the autowire mode for a bean definition with the `autowire` attribute of the `<bean/>` element. The autowiring functionality has four modes. You specify autowiring per bean and can thus choose which ones to autowire. The following table describes the four autowiring modes:
+>>>>>>> 哺乳类
+当使用基于XML的配置元数据时（查看<<beans-factory-collaborators>>），你可以使用 `<bean/>` 元素的 `autowire` 属性来为一个bean指明自动装配的模式。自动装配功能有四种模式。你可以为每一个bean指定自动装配，因此可以选择自动装配哪些bean。下表描述了四种自动装配模式：
+<<<<<<< 哺乳类
+ 
+[[beans-factory-autowiring-modes-tbl]]
+.Autowiring modes
+[cols="20%,80%"]
+|===
+| Mode| Explanation
+>>>>>>> 哺乳类
+[[beans-factory-autowiring-modes-tbl]]
+.自动装配模式
+[cols="20%,80%"]
+|===
+| 模式| 说明
+<<<<<<< 哺乳类
+ 
+| `no`
+| (Default) No autowiring. Bean references must be defined by `ref` elements. Changing
+  the default setting is not recommended for larger deployments, because specifying
+  collaborators explicitly gives greater control and clarity. To some extent, it
+  documents the structure of a system.
+>>>>>>> 哺乳类
+| `no`
+| (默认) 无自动装配.。Bean的引用必须由`ref` 元素定义。对于大规模的部署，不建议修改默认配置，因为显示地指定协作类可以提供更好的控制和清晰度。在某种程度上，它记录了一个系统的结构。
+<<<<<<< 哺乳类
+ 
+| `byName`
+| Autowiring by property name. Spring looks for a bean with the same name as the
+  property that needs to be autowired. For example, if a bean definition is set to
+  autowire by name and it contains a `master` property (that is, it has a
+  `setMaster(..)` method), Spring looks for a bean definition named `master` and uses
+  it to set the property.
+>>>>>>> 哺乳类
+| `byName`
+| 通过属性名自动装配。Spring会查找与需要自动装配的属性同名的bean。例如，如果将一个bean设置为按属性名自动装配，并且它包含一个`master` 属性（也就是说，它有一个`setMaster(..)`方法），Spring会查找一个名为 `master` 的bean并使用它来设置属性。
+<<<<<<< 哺乳类
+ 
+| `byType`
+| Lets a property be autowired if exactly one bean of the property type exists in
+  the container. If more than one exists, a fatal exception is thrown, which indicates
+  that you may not use `byType` autowiring for that bean. If there are no matching
+  beans, nothing happens (the property is not set).
+>>>>>>> 哺乳类
+| `byType`
+| 如果容器中恰好存在该属性类型的一个bean，则自动装配该属性。如果存在多个，则抛出一个毁灭性异常，表明你不能为该bean使用 `byType`来自动装配。
+<<<<<<< 哺乳类
+ 
+| `constructor`
+| Analogous to `byType` but applies to constructor arguments. If there is not exactly
+  one bean of the constructor argument type in the container, a fatal error is raised.
+|===
+>>>>>>> 哺乳类
+| `constructor`
+| 与`byType` 类似，但适用于构造方法参数。如果容器中没有一个构造方法参数类型的bean，将引发致命错误。
+|===
+<<<<<<< 哺乳类
+ 
+With `byType` or `constructor` autowiring mode, you can wire arrays and
+typed collections. In such cases, all autowire candidates within the container that
+match the expected type are provided to satisfy the dependency. You can autowire
+strongly-typed `Map` instances if the expected key type is `String`. An autowired `Map`
+instance's values consist of all bean instances that match the expected type, and the
+`Map` instance's keys contain the corresponding bean names.
+ >>>>>>> 哺乳类
+使用`byType` 或`constructor` 自动装配模式，你可以连接数组和类型集合。在这种情况下，将提供容器中与预期类型匹配的所有自动装配的候选对象，以满足依赖性。如果预期key类型是 `String`，你可以自动装配强类型的 `Map` 实例。这个自动装配的 `Map`实例的values包含所有与预期类型匹配的bean实例，并且`Map`实例的keys包含相应的bean名称。
+ <<<<<<< 哺乳类
+ 
+ 
+ 
+[[beans-autowired-exceptions]]
+==== Limitations and Disadvantages of Autowiring
+ >>>>>>> 哺乳类
+[[beans-autowired-exceptions]]
+==== 自动装配的缺点和局限性
+<<<<<<< 哺乳类
+ 
+Autowiring works best when it is used consistently across a project. If autowiring is
+not used in general, it might be confusing to developers to use it to wire only one or
+two bean definitions.
+>>>>>>> 哺乳类
+在整个项目中统一使用自动装配时，效果最好。如果通过不使用自动装配，那可能使开发者对仅使用自动装配来连接一两个bean感到困惑。
+<<<<<<< 哺乳类
+ 
+Consider the limitations and disadvantages of autowiring:
+>>>>>>> 哺乳类
+考虑自动装配的局限性和缺点：
+<<<<<<< 哺乳类
+ 
+Explicit dependencies in `property` and `constructor-arg` settings always override
+  autowiring. You cannot autowire simple properties such as primitives, `Strings`, and `Classes` (and arrays of such simple properties). This limitation is by-design.
+>>>>>>> 哺乳类
+在 `property`和`constructor-arg` 设置中的显示依赖关系始终会覆盖自动装配。你不能自动装配简单的属性，例如基本类型，`Strings`，和`Classes` （以及这种简单属性的数组）。这种限制是由设计造成的。
+<<<<<<< 哺乳类
+Autowiring is less exact than explicit wiring. Although, as noted in the earlier table,
+  Spring is careful to avoid guessing in case of ambiguity that might have unexpected
+  results. The relationships between your Spring-managed objects are no longer
+  documented explicitly.
+>>>>>>> 哺乳类
+自动装配不如显示声明精确。尽管如前表所述，Spring还是小心地避免猜测，以免产生意想不到的结果。Spring管理对象之间的关系不再明确记录。
+<<<<<<< 哺乳类
+Wiring information may not be available to tools that may generate documentation from a Spring container.
+>>>>>>> 哺乳类
+连接信息可能对从Spring容器生产文档的工具不可用。
+<<<<<<< 哺乳类
+Multiple bean definitions within the container may match the type specified by the
+  setter method or constructor argument to be autowired. For arrays, collections, or
+  `Map` instances, this is not necessarily a problem. However, for dependencies that
+  expect a single value, this ambiguity is not arbitrarily resolved. If no unique bean
+  definition is available, an exception is thrown.
+>>>>>>> 哺乳类
+容器中多个bean可能与要自动装配的setter方法或构造方法参数指定的类型匹配。对于数组，集合，或者`Map` 实例，这不一定是问题。然而，对于期望一个简单值的依赖项来说，这种歧义性不能武断的解决。如果没有唯一的bean可用，将抛出一个异常。
+<<<<<<< 哺乳类
+
+In the latter scenario, you have several options:
+>>>>>>> 哺乳类
+在后一种情景中，你有几种选择：
+<<<<<<< 哺乳类
+
+Abandon autowiring in favor of explicit wiring.
+>>>>>>> 哺乳类
+放弃自动装配，转而使用显示引用
+<<<<<<< 哺乳类
+Avoid autowiring for a bean definition by setting its `autowire-candidate` attributes
+  to `false`, as described in the <<beans-factory-autowire-candidate, next section>>.
+ >>>>>>> 哺乳类
+通过将bean的`autowire-candidate` 属性设置为 `false`，来避免自动装配，如<<beans-factory-autowire-candidate, next section>>所述。
+<<<<<<< 哺乳类
+Designate a single bean definition as the primary candidate by setting the
+  `primary` attribute of its `<bean/>` element to `true`.
+>>>>>>> 哺乳类
+通过将其`<bean/>` 元素的 `primary` 属性设置为`true` ，将一个简单的bean指定为主要的候选对象。
+<<<<<<< 哺乳类
+Implement the more fine-grained control available with annotation-based configuration,as described in <<beans-annotation-config>>.
+>>>>>>> 哺乳类
+如 <<beans-annotation-config>>所述，通过基于注解的配置实现更细粒度的控制。
+<<<<<<< 哺乳类
+ 
+ 
+[[beans-factory-autowire-candidate]]
+==== Excluding a Bean from Autowiring
+>>>>>>> 哺乳类
+==== 从自动装配中排除一个bean
+<<<<<<< 哺乳类
+
+On a per-bean basis, you can exclude a bean from autowiring. In Spring's XML format, set
+the `autowire-candidate` attribute of the `<bean/>` element to `false`. The container
+makes that specific bean definition unavailable to the autowiring infrastructure
+(including annotation style configurations such as <<beans-autowired-annotation,
+`@Autowired`>>).
+>>>>>>> 哺乳类
+在每个bean的基础上，你可以将bean排除在自动装配之外。通过在Spring的XML格式中，将 `<bean/>` 元素的 `autowire-candidate` 属性设置为 `false` 。容器使该特定的bean定义不适用于自动装配的基础结构（包括注解样式的配置，例如 <<beans-autowired-annotation,
+`@Autowired`>>）。
+<<<<<<< 哺乳类
+
+NOTE: The `autowire-candidate` attribute is designed to only affect type-based autowiring.
+It does not affect explicit references by name, which get resolved even if the
+specified bean is not marked as an autowire candidate. As a consequence, autowiring
+by name nevertheless injects a bean if the name matches.
+>>>>>>> 哺乳类
+NOTE:  `autowire-candidate` 属性被设计为只影响基于类型的自动装配。它不影响按名称显示的引用，即使指定的bean没有标记为自动装配的候选bean，也会解析这些引用。因此，如果名称匹配的话，通过名称自动装配仍然会注入一个bean。
+<<<<<<< 哺乳类
+
+You can also limit autowire candidates based on pattern-matching against bean names. The top-level `<beans/>` element accepts one or more patterns within its
+`default-autowire-candidates` attribute. For example, to limit autowire candidate status
+to any bean whose name ends with `Repository`, provide a value of `*Repository`. To
+provide multiple patterns, define them in a comma-separated list. An explicit value of
+`true` or `false` for a bean definition's `autowire-candidate` attribute always takes
+precedence. For such beans, the pattern matching rules do not apply.
+>>>>>>> 哺乳类
+你还可以根据bean名称的模式匹配来限制自动装配哪些候选bean。顶级 `<beans/>` 元素在其`default-autowire-candidates` 属性中接受一个或多个模式。例如，要将自动装配候选状态限制为名称以 `Repository` 结尾的任何bean， 提供值 `*Repository` 给 `default-autowire-candidates` 属性。要提供多种模式的话，在以逗号分割的列表中定义它们。bean定义的 `autowire-candidate` 属性的显示值 `true` 或者 `false` 总是优先。对于这些bean，模式匹配规则不适用。（译者注：`autowire-candidate` 属性的默认值是 `default` 。）
+<<<<<<< 哺乳类
+
+These techniques are useful for beans that you never want to be injected into other
+beans by autowiring. It does not mean that an excluded bean cannot itself be configured by using autowiring. Rather, the bean itself is not a candidate for autowiring other beans.
+ >>>>>>> 哺乳类
+这些技术对于那些你不想通过自动装配将其注入到其他bean中的bean非常有用。这并不意味着不能通过使用自动装配来配置被排除的bean。相反，bean本身不能作为自动装配到其他bean的候选对象。
+<<<<<<< 哺乳类
+
