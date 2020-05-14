@@ -8,6 +8,10 @@
 2. ServerBootStrap 核心是 bind()
    1. 初始化Channel（对应NIO初始化SocketChannel的操作）
 
+## 03 通过netty来解读future的玩法
+
+
+
 ## 06 - 07 从jdk函数式到netty的上下文设计编程实战解读
 
 从 jdk11 的函数接口 `Function ` 说起，以默认的方法实现：`default <V> Function<V, R> compose(Function<? super V, ? extends T> before)` 和 `default <V> Function<T, V> andThen(Function<? super R, ? extends V> after)`为例，展开描述 ChannelHandlerContext 在 Reactor-Netty 中的优化点，重点在于上下文的信息传递，Reactor-Netty 以类似 `Function` 的做法，以函数式替换了 Netty 中 `ChannelHandlerContext(AbstractChannelHandlerContext)`的链表结构。
@@ -65,9 +69,11 @@ private void addLast0(AbstractChannelHandlerContext newCtx) {
 
 例如`SingleThreadEventExecutor.this.run()`，改变`run()`方法是实现接口`Runnable`的固有印象。
 
-## 13 - 对netty中的bind与accept逻辑穿针引线
+## 13 对netty中的bind与accept逻辑穿针引线
 
 结合`nio-example`，对比Netty中是如何实现`bind`与`accept`之间的串连的。
+
+
 
 ## 14 - 16 Netty中channel的wirteAndFlush解读
 
@@ -75,13 +81,17 @@ pipleline中，消息的进出，都需要经过`DefaultChannelPipeline#HeadCont
 
 `ChannelHandler`之间的连接处理，进行抽象，则形成`ChannelHandlerContext`，使`ChannelHandler`更专注于业务逻辑处理。
 
-理解`Pipleline`、`ChannelHandlerContext`和`ChannelHandler`这三者之间的关系。
+理解`ChannelPipeline`、`ChannelHandlerContext`和`ChannelHandler`这三者之间的关系。
 
 从`wirte`和`wirteAndFlush`方法出发，理解wirte和wirteAndFlush的整个流程。
 
 ![](images/wirte和wirteAndFlush的总体流程.png)
 
-## 18 - executor.inEventLoop解读以及相关代码借鉴
+## 17 Reactor-Netty 与 Spring WebFlux 中对于channel的读写相关实现解读
+
+
+
+## 18 executor.inEventLoop解读以及相关代码借鉴
 
 Netty 中的executor.inEventLoop：
 
