@@ -4,62 +4,6 @@
 
 
 
-## 父子线程如何传递信息？
-
-如源码所示：
-
-```java
-public class Thread implements Runnable {
-    ...
-    /*
-     * InheritableThreadLocal values pertaining to this thread. This map is
-     * maintained by the InheritableThreadLocal class.
-     */
-    ThreadLocal.ThreadLocalMap inheritableThreadLocals = null;    
-        
-    /**
-     * Initializes a Thread.
-     *
-     * @param g the Thread group
-     * @param target the object whose run() method gets called
-     * @param name the name of the new Thread
-     * @param stackSize the desired stack size for the new thread, or
-     *        zero to indicate that this parameter is to be ignored.
-     * @param acc the AccessControlContext to inherit, or
-     *            AccessController.getContext() if null
-     * @param inheritThreadLocals if {@code true}, inherit initial values for
-     *            inheritable thread-locals from the constructing thread
-     */
-    private Thread(ThreadGroup g, Runnable target, String name,
-                   long stackSize, AccessControlContext acc,
-                   boolean inheritThreadLocals) {
-        ...
-        Thread parent = currentThread();
-        ...
-        // inheritThreadLocals 默认是传true的
-        if (inheritThreadLocals && parent.inheritableThreadLocals != null)
-            this.inheritableThreadLocals =
-                ThreadLocal.createInheritedMap(parent.inheritableThreadLocals);
-        ...
-    }	
-}
-
-public class InheritableThreadLocal<T> extends ThreadLocal<T> {
-    ...
-    /**
-     * Create the map associated with a ThreadLocal.
-     *
-     * @param t the current thread
-     * @param firstValue value for the initial entry of the table.
-     */
-    void createMap(Thread t, T firstValue) {
-        t.inheritableThreadLocals = new ThreadLocalMap(this, firstValue);
-    }    
-}
-```
-
-
-
 ## Thread .ThreadLocalMap 如何与Thread 关联在一起？
 
 我们可以直接从源代码中一窥究竟：java.lang.ThreadLocal
@@ -122,6 +66,107 @@ public class ThreadLocal<T> {
     }    
 }
 ```
+
+
+
+## 父子线程之间如何传递信息？
+
+如源码所示：
+
+```java
+public class Thread implements Runnable {
+    ...
+    /*
+     * InheritableThreadLocal values pertaining to this thread. This map is
+     * maintained by the InheritableThreadLocal class.
+     */
+    ThreadLocal.ThreadLocalMap inheritableThreadLocals = null;    
+        
+    /**
+     * Initializes a Thread.
+     *
+     * @param g the Thread group
+     * @param target the object whose run() method gets called
+     * @param name the name of the new Thread
+     * @param stackSize the desired stack size for the new thread, or
+     *        zero to indicate that this parameter is to be ignored.
+     * @param acc the AccessControlContext to inherit, or
+     *            AccessController.getContext() if null
+     * @param inheritThreadLocals if {@code true}, inherit initial values for
+     *            inheritable thread-locals from the constructing thread
+     */
+    private Thread(ThreadGroup g, Runnable target, String name,
+                   long stackSize, AccessControlContext acc,
+                   boolean inheritThreadLocals) {
+        ...
+        Thread parent = currentThread();
+        ...
+        // inheritThreadLocals 默认是传true的
+        if (inheritThreadLocals && parent.inheritableThreadLocals != null)
+            this.inheritableThreadLocals =
+                ThreadLocal.createInheritedMap(parent.inheritableThreadLocals);
+        ...
+    }	
+}
+
+public class ThreadLocal<T> {
+    static ThreadLocalMap createInheritedMap(ThreadLocalMap parentMap) {
+        return new ThreadLocalMap(parentMap);
+    }
+    
+    static class ThreadLocalMap {
+        private ThreadLocalMap(ThreadLocalMap parentMap) {
+            Entry[] parentTable = parentMap.table;
+            int len = parentTable.length;
+            setThreshold(len);
+            table = new Entry[len];
+
+            for (Entry e : parentTable) {
+                if (e != null) {
+                    @SuppressWarnings("unchecked")
+                    ThreadLocal<Object> key = (ThreadLocal<Object>) e.get();
+                    if (key != null) {
+                        Object value = key.childValue(e.value);
+                        Entry c = new Entry(key, value);
+                        int h = key.threadLocalHashCode & (len - 1);
+                        while (table[h] != null)
+                            h = nextIndex(h, len);
+                        table[h] = c;
+                        size++;
+                    }
+                }
+            }
+        }    	
+    }
+}
+
+```
+
+如源码可知：当new Thread 时，会将父线程的 **inheritableThreadLocals** 赋值给当前Thread的**inheritableThreadLocals** 。
+
+那么如何对父线程的 **inheritableThreadLocals** 进行赋值呢？
+
+结合上一节的内容并根据以下源码可知：
+
+```java
+public class InheritableThreadLocal<T> extends ThreadLocal<T> {
+    ...
+    void createMap(Thread t, T firstValue) {
+        t.inheritableThreadLocals = new ThreadLocalMap(this, firstValue);
+    }
+    ...
+}
+```
+
+父线程只需持有一个 **InheritableThreadLocal** 属性，并对其赋值，即可将值传递给子线程。
+
+demo：
+
+~~~java
+
+~~~
+
+
 
 
 

@@ -623,3 +623,388 @@ final class FluxCreate<T> extends Flux<T> implements SourceProducer<T> {
 
 
 
+## 13 Spring Reactor可以带给我们什么？
+
+统一API设计，实现各种语言的大一统，类似抽象语法树AST。
+
+![](images/13 响应式编程大一统.png)
+
+
+
+## 14 RxJava 与 Reactor 中 create 设计上的区别与总结
+
+
+
+## 15 - 16 Spring Reactor 中间操作思路推导实现
+
+中间操作的设计思路图：
+
+![](images/15-16 中间操作类的设计思路.png)
+
+
+
+中间操作实例类：
+
+reactor.core.publisher.Operators.MonoSubscriber
+
+```java
+public abstract class Operators {
+	public static class MonoSubscriber<I, O>
+			implements InnerOperator<I, O>,
+			           Fuseable, //for constants only
+			           QueueSubscription<O> {
+    	...                   
+    }       
+}
+
+interface InnerOperator<I, O>
+		extends InnerConsumer<I>, InnerProducer<O> {
+	@Override
+	default Context currentContext() {
+		return actual().currentContext();
+	}
+}
+
+interface InnerConsumer<I>
+		extends CoreSubscriber<I>, Scannable {
+}
+
+interface InnerProducer<O>
+		extends Scannable, Subscription {
+}
+```
+
+reactor.core.publisher.MonoCount
+
+```java
+final class MonoCount<T> extends MonoFromFluxOperator<T, Long> implements Fuseable {
+	static final class CountSubscriber<T> extends Operators.MonoSubscriber<T, Long> {
+		long counter;
+
+		Subscription s;
+
+		CountSubscriber(CoreSubscriber<? super Long> actual) {
+			super(actual);
+		}    	
+    }
+}
+```
+
+
+
+中间操作示意图：
+
+![](images/15-16 中间操作的示意图.png)
+
+上中下游之间的转换：
+
+![](images/15-16 包含中间操作的状态示意图.png)
+
+以reactor.core.publisher.Flux#map 为例：
+
+```java
+Flux.fromArray(xxx)
+    .map(Function<? super T, ? extends V> mapper)
+    .filter(Predicate<? super T> p)
+    .sbuscriber(CoreSubscriber<? super T> actual)
+```
+
+Flux.fromArray(xxx).map(xxx).filter(xxx) 相当于上图层层封装的publisher
+
+```java
+public abstract class Flux<T> implements CorePublisher<T> {
+	public final <V> Flux<V> map(Function<? super T, ? extends V> mapper) {
+		if (this instanceof Fuseable) {
+			return onAssembly(new FluxMapFuseable<>(this, mapper));
+		}
+		return onAssembly(new FluxMap<>(this, mapper));
+	}
+    
+	@Override
+	@SuppressWarnings("unchecked")
+	public final void subscribe(Subscriber<? super T> actual) {
+		CorePublisher publisher = Operators.onLastAssembly(this);
+		CoreSubscriber subscriber = Operators.toCoreSubscriber(actual);
+
+		try {
+            // 如果是中间操作类
+			if (publisher instanceof OptimizableOperator) {
+				OptimizableOperator operator = (OptimizableOperator) publisher;
+				while (true) {
+                    // 层层封装最下游的subscriber，相当于上图层层封装的subscriber
+					subscriber = operator.subscribeOrReturn(subscriber);
+					if (subscriber == null) {
+						// null means "I will subscribe myself", returning...
+						return;
+					}
+					OptimizableOperator newSource = operator.nextOptimizableSource();
+					if (newSource == null) {
+						publisher = operator.source();
+						break;
+					}
+					operator = newSource;
+				}
+			}
+			publisher.subscribe(subscriber);
+		}
+		catch (Throwable e) {
+			Operators.reportThrowInSubscribe(subscriber, e);
+			return;
+		}
+	}    
+}
+
+final class FluxArray<T> extends Flux<T> implements Fuseable, SourceProducer<T> {
+	@SuppressWarnings("unchecked")
+	public static <T> void subscribe(CoreSubscriber<? super T> s, T[] array) {
+		if (array.length == 0) {
+			Operators.complete(s);
+			return;
+		}
+        
+		if (s instanceof ConditionalSubscriber) {
+			s.onSubscribe(new ArrayConditionalSubscription<>((ConditionalSubscriber<? super T>) s, array));
+		}
+		else {
+			s.onSubscribe(new ArraySubscription<>(s, array));
+		}
+	}
+
+	static final class ArrayConditionalSubscription<T>
+			implements InnerProducer<T>, SynchronousSubscription<T> {
+		@Override
+		public void request(long n) {
+			if (Operators.validate(n)) {
+				if (Operators.addCap(REQUESTED, this, n) == 0) {
+					if (n == Long.MAX_VALUE) {
+						fastPath();
+					}
+					else {
+						slowPath(n);
+					}
+				}
+			}
+		}    	
+    }
+}
+
+
+final class FluxMap<T, R> extends InternalFluxOperator<T, R> {
+	final Function<? super T, ? extends R> mapper;
+
+	/**
+	 * Constructs a FluxMap instance with the given source and mapper.
+	 *
+	 * @param source the source Publisher instance
+	 * @param mapper the mapper function
+	 *
+	 * @throws NullPointerException if either {@code source} or {@code mapper} is null.
+	 */
+	FluxMap(Flux<? extends T> source,
+			Function<? super T, ? extends R> mapper) {
+		super(source);
+		this.mapper = Objects.requireNonNull(mapper, "mapper");
+	}
+
+	@Override
+	@SuppressWarnings("unchecked")
+	public CoreSubscriber<? super T> subscribeOrReturn(CoreSubscriber<? super R> actual) {
+		if (actual instanceof Fuseable.ConditionalSubscriber) {
+			Fuseable.ConditionalSubscriber<? super R> cs =
+					(Fuseable.ConditionalSubscriber<? super R>) actual;
+			return new MapConditionalSubscriber<>(cs, mapper);
+		}
+		return new MapSubscriber<>(actual, mapper);
+	}
+    
+	static final class MapSubscriber<T, R>
+			implements InnerOperator<T, R> {
+        
+		final CoreSubscriber<? super R>        actual;
+		final Function<? super T, ? extends R> mapper;
+
+		Subscription s;        
+        
+		@Override
+		public void onSubscribe(Subscription s) {
+			if (Operators.validate(this.s, s)) {
+				this.s = s;
+
+				actual.onSubscribe(this);
+			}
+		}
+        
+		@Override
+		public void request(long n) {
+			s.request(n);
+		}        
+    }
+}
+
+abstract class InternalFluxOperator<I, O> extends FluxOperator<I, O> implements Scannable,
+                                                                                OptimizableOperator<O, I> {
+	@Nullable
+	final OptimizableOperator<?, I> optimizableOperator;
+
+	/**
+	 * Build a {@link InternalFluxOperator} wrapper around the passed parent {@link Publisher}
+	 *
+	 * @param source the {@link Publisher} to decorate
+	 */
+	protected InternalFluxOperator(Flux<? extends I> source) {
+		super(source);
+		if (source instanceof OptimizableOperator) {
+			@SuppressWarnings("unchecked")
+			OptimizableOperator<?, I> optimSource = (OptimizableOperator<?, I>) source;
+			this.optimizableOperator = optimSource;
+		}
+		else {
+			this.optimizableOperator = null;
+		}
+	}
+
+	@Override
+	@SuppressWarnings("unchecked")
+	public final void subscribe(CoreSubscriber<? super O> subscriber) {
+		OptimizableOperator operator = this;
+		try {
+			while (true) {
+				subscriber = operator.subscribeOrReturn(subscriber);
+				if (subscriber == null) {
+					// null means "I will subscribe myself", returning...
+					return;
+				}
+				OptimizableOperator newSource = operator.nextOptimizableSource();
+				if (newSource == null) {
+					operator.source().subscribe(subscriber);
+					return;
+				}
+				operator = newSource;
+			}
+		}
+		catch (Throwable e) {
+			Operators.reportThrowInSubscribe(subscriber, e);
+			return;
+		}
+	}                                                                                    
+}
+```
+
+
+
+
+
+## 17 Spring Reactor 业务逻辑上中游一体化的最后一步 - 大融合
+
+![](images/17 Spring Reactor 业务逻辑上中游一体化的最后一步 - 大融合.png)
+
+
+
+
+
+## 18 结合Reactor-Netty 与 Spring WebFlux来讲述函数式SPI设计的理念
+
+从`reactor.netty.http.server.HttpServer#handle`出发，讲解函数式SPI的设计理念：
+
+```java
+public final HttpServer handle(BiFunction<? super HttpServerRequest, ? super
+		HttpServerResponse, ? extends Publisher<Void>> handler) {
+	return new HttpServerHandle(this, handler);
+}
+```
+
+```java
+final class HttpServerHandle extends HttpServerOperator implements ConnectionObserver,
+                                                                   Function<ServerBootstrap, ServerBootstrap> {
+	// 这个接受 org.springframework.http.server.reactive.ReactorHttpHandlerAdapter
+	final BiFunction<? super HttpServerRequest, ? super
+			HttpServerResponse, ? extends Publisher<Void>> handler;
+
+	HttpServerHandle(HttpServer server,
+			BiFunction<? super HttpServerRequest, ? super
+					HttpServerResponse, ? extends Publisher<Void>> handler) {
+		super(server);
+		this.handler = Objects.requireNonNull(handler, "handler");
+	}
+
+	@Override
+	@SuppressWarnings("FutureReturnValueIgnored")
+	public void onStateChange(Connection connection, State newState) {
+		if (newState == HttpServerState.REQUEST_RECEIVED) {
+			try {
+				if (log.isDebugEnabled()) {
+					log.debug(format(connection.channel(), "Handler is being applied: {}"), handler);
+				}
+				HttpServerOperations ops = (HttpServerOperations) connection;
+                // handler.apply(ops, ops) => handler.apply(HttpServerRequest, HttpServerResponse)
+				Mono.fromDirect(handler.apply(ops, ops))
+				    .subscribe(ops.disposeSubscriber());
+			}
+			catch (Throwable t) {
+				log.error(format(connection.channel(), ""), t);
+				//"FutureReturnValueIgnored" this is deliberate
+				connection.channel()
+				          .close();
+			}
+		}
+	}                                                                       
+}
+
+class HttpServerOperations extends HttpOperations<HttpServerRequest, HttpServerResponse>
+		implements HttpServerRequest, HttpServerResponse {
+	final HttpResponse nettyResponse;
+	final HttpHeaders  responseHeaders;
+	final Cookies     cookieHolder;
+	final HttpRequest nettyRequest;
+	final String path;
+	final ConnectionInfo connectionInfo;
+	final ServerCookieEncoder cookieEncoder;
+	final ServerCookieDecoder cookieDecoder;
+    ...
+}
+```
+
+
+
+Reactor-Netty 与 Spring WebFlux 的Handler对接，一般来说对接，要么就是Spring向下适配，要么就是Reactor-Netty向上适配，所以要有一个适配类：
+
+`org.springframework.http.server.reactive.ReactorHttpHandlerAdapter`
+
+```java
+import reactor.netty.http.server.HttpServerRequest;
+import reactor.netty.http.server.HttpServerResponse;
+public class ReactorHttpHandlerAdapter implements BiFunction<HttpServerRequest, HttpServerResponse, Mono<Void>> {
+	private final HttpHandler httpHandler;
+    
+	@Override
+	public Mono<Void> apply(HttpServerRequest reactorRequest, HttpServerResponse reactorResponse) {
+		NettyDataBufferFactory bufferFactory = new NettyDataBufferFactory(reactorResponse.alloc());
+		try {
+            // 封装Reactor-Netty的HttpServerRequest和HttpServerResponse
+			ReactorServerHttpRequest request = new ReactorServerHttpRequest(reactorRequest, bufferFactory);
+			ServerHttpResponse response = new ReactorServerHttpResponse(reactorResponse, bufferFactory);
+
+			if (request.getMethod() == HttpMethod.HEAD) {
+				response = new HttpHeadResponseDecorator(response);
+			}
+			// 这里就与Spring的HttpHandle关联起来了
+			return this.httpHandler.handle(request, response)
+					.doOnError(ex -> logger.trace(request.getLogPrefix() + "Failed to complete: " + ex.getMessage()))
+					.doOnSuccess(aVoid -> logger.trace(request.getLogPrefix() + "Handling completed"));
+		}
+		catch (URISyntaxException ex) {
+			if (logger.isDebugEnabled()) {
+				logger.debug("Failed to get request URI: " + ex.getMessage());
+			}
+			reactorResponse.status(HttpResponseStatus.BAD_REQUEST);
+			return Mono.empty();
+		}
+	}    
+}
+```
+
+如代码所示：ReactorHttpHandlerAdapter 实现了 ` BiFunction<HttpServerRequest, HttpServerResponse, Mono<Void>>`，相当于“内胜”。
+
+
+
+## 19 - 20 AtomicXxxFieldUpdate 的技法应用（见JUC系列）

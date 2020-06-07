@@ -594,8 +594,6 @@ public abstract class BaseDuplexConnection implements DuplexConnection {
 
 
 
-
-
 ## 疑问
 
 reactor.core.publisher.FluxBuffer.BufferSkipSubscriber#scanUnsafe
@@ -603,3 +601,5 @@ reactor.core.publisher.FluxBuffer.BufferSkipSubscriber#scanUnsafe
 ![](images/rsocket源码疑问-1.png)
 
 其作用与getter方法一致，为什么要这样写？
+
+因为对外要统一API，如果使用getter方法的话，就得明确每个类有哪些属性的getter，这样才能获得值。使用统一使用`scanUnsafe`方法，不仅外部调用方便，而且外部调用者无需关心内部实现机制，只需传key即可，无则返回null。一般用于统计等分析用途。

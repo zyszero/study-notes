@@ -581,8 +581,6 @@ public class ReentrantLock implements Lock, java.io.Serializable {
 
 
 
-
-
 组成队列的节点：
 
 java.util.concurrent.locks.AbstractQueuedSynchronizer.Node
@@ -753,7 +751,9 @@ public abstract class AbstractQueuedSynchronizer
         boolean interrupted = false;
         try {
             for (;;) {
+                // 获取node节点的前驱节点
                 final Node p = node.predecessor();
+                // 如果前驱节点时head头，那么node节点就再争抢下锁
                 if (p == head && tryAcquire(arg)) {
                     setHead(node);
                     p.next = null; // help GC
@@ -781,6 +781,7 @@ public abstract class AbstractQueuedSynchronizer
      */
     private static boolean shouldParkAfterFailedAcquire(Node pred, Node node) {
         int ws = pred.waitStatus;
+        // 初次进来的pred，pred.waitStatus = 0
         if (ws == Node.SIGNAL)
             /*
              * This node has already set status asking a release
@@ -824,6 +825,7 @@ public class LockSupport {
     
     public static void park(Object blocker) {
         Thread t = Thread.currentThread();
+        // 假设blocker是ReentrantLock.FairSync，那么setBlocker的作用就是将blocker与当前线程绑定起来。
         setBlocker(t, blocker);
         U.park(false, 0L);
         setBlocker(t, null);
