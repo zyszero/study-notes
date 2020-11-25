@@ -15,7 +15,7 @@ ReentrantLock：可重入锁，顾名思义，同个线程可以多次持有这�
 
 1. 公平锁该如何实现？
 
-   借助队列去实现顺序，讲究先来后到，最后通过CAS进行锁竞争。
+   借助锁队列（CLH）去实现顺序，讲究先来后到，最后通过CAS进行锁竞争。
 
 2. 非公平锁怎么实现？
 
@@ -60,13 +60,34 @@ public abstract class AbstractOwnableSynchronizer
     /**
      * The current owner of exclusive mode synchronization.
      */
-    private transient Thread exclusiveOwnerThread;	
+    private transient Thread exclusiveOwnerThread;
+
+    /**
+     * Sets the thread that currently owns exclusive access.
+     * A {@code null} argument indicates that no thread owns access.
+     * This method does not otherwise impose any synchronization or
+     * {@code volatile} field accesses.
+     * @param thread the owner thread
+     */
+    protected final void setExclusiveOwnerThread(Thread thread) {
+        exclusiveOwnerThread = thread;
+    }
+
+    /**
+     * Returns the thread last set by {@code setExclusiveOwnerThread},
+     * or {@code null} if never set.  This method does not otherwise
+     * impose any synchronization or {@code volatile} field accesses.
+     * @return the owner thread
+     */
+    protected final Thread getExclusiveOwnerThread() {
+        return exclusiveOwnerThread;
+    }    
 }
 ```
 
 
 
-ReentrantLock 内部有一个 Sync 对象
+ReentrantLock 内部有一个 Sync 对象，通过它来实现可重入的互斥锁
 
 ```java
 public class ReentrantLock implements Lock, java.io.Serializable {
@@ -97,6 +118,26 @@ public class ReentrantLock implements Lock, java.io.Serializable {
 ```
 
 java.util.concurrent.locks.ReentrantLock.Sync 是个抽象类，派生出java.util.concurrent.locks.ReentrantLock.FairSync（公平锁）、java.util.concurrent.locks.ReentrantLock.NonfairSync（非公平锁）。
+
+
+
+ReentrantLock默认采用的是非公平锁
+
+```java
+public class ReentrantLock implements Lock, java.io.Serializable {
+	....
+    /**
+     * Creates an instance of {@code ReentrantLock}.
+     * This is equivalent to using {@code ReentrantLock(false)}.
+     */
+    public ReentrantLock() {
+        sync = new NonfairSync();
+    }        
+    ....    
+}
+```
+
+
 
 ### 加锁过程
 
@@ -180,7 +221,7 @@ public abstract class AbstractQueuedSynchronizer
              * indicate retry.
              */
             do {
-                // 如果node的前置节点pred处于CANCLED状态，应抛弃此前置节点，往上找前置节点，直至前置节点的状态不为CANCLED
+                // 如果node的前置节点pred处于CANCLED状态，应移除此前置节点，往上找前置节点，直至前置节点的状态不为CANCLED
                 node.prev = pred = pred.prev;
             } while (pred.waitStatus > 0);
             pred.next = node;
@@ -658,15 +699,15 @@ java.util.concurrent.locks.Condition的模型：
 ```java
 class BoundedBuffer<E> {
   final Lock lock = new ReentrantLock();
-  final Condition notFull  = <b>lock.newCondition(); 
-  final Condition notEmpty = <b>lock.newCondition(); 
+  final Condition notFull  = lock.newCondition(); 
+  final Condition notEmpty = lock.newCondition(); 
   final Object[] items = new Object[100];
   int putptr, takeptr, count;
   public void put(E x) throws InterruptedException {
    lock.lock();
     try {
       while (count == items.length)
-        <b>notFull.await();
+        notFull.await();
       items[putptr] = x;
       if (++putptr == items.length) putptr = 0;
       ++count;
@@ -680,7 +721,7 @@ class BoundedBuffer<E> {
     lock.lock();
     try {
       while (count == 0)
-        <b>notEmpty.await();
+        notEmpty.await();
       E x = (E) items[takeptr];
       if (++takeptr == items.length) takeptr = 0;
       --count;
@@ -779,7 +820,7 @@ public abstract class AbstractQueuedSynchronizer
          * without requiring many re-traversals during cancellation
          * storms.
          */
-        // 假设： a->b->c->d，b、c为CANCELLED状态的节点，要移除CANCELLED状态的节点，只需代入这种场景即可理解下面的代码了
+        // 假设： a->b->c->d，b、c为CANCELLED状态的节点，从头开始遍历，要移除CANCELLED状态的节点，只需代入这种场景即可理解下面的代码了
         private void unlinkCancelledWaiters() {
             Node t = firstWaiter;
             Node trail = null;
@@ -984,7 +1025,7 @@ final boolean transferForSignal(Node node) {
     Node p = enq(node);
     int ws = p.waitStatus;
     if (ws > 0 || !p.compareAndSetWaitStatus(ws, Node.SIGNAL))
-        // 这里的unpark是针对node节点的prev节点被cancel的情况
+        // 这里的unpark是针对node节点的prev节点被cancel或出错的情况
         LockSupport.unpark(node.thread);
     return true;
 }
