@@ -178,7 +178,9 @@ public abstract class AtomicReferenceFieldUpdater<T,V> {
 
 
 
-JDK8的实现方式：java.util.concurrent.locks.AbstractQueuedSynchronizer
+java.util.concurrent.locks.AbstractQueuedSynchronizer
+
+JDK8采用Unsafe
 
 ```java
 public abstract class AbstractQueuedSynchronizer
@@ -212,7 +214,9 @@ public abstract class AbstractQueuedSynchronizer
 
 
 
-JDK9以后的实现方式：java.util.concurrent.locks.AbstractQueuedSynchronizer
+java.util.concurrent.locks.AbstractQueuedSynchronizer
+
+JDK9以后，换了另一种方式：`VarHandle`
 
 ```java
 public abstract class AbstractQueuedSynchronizer
