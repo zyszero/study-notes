@@ -35,3 +35,26 @@ public interface SecurityConfigurer<O, B extends SecurityBuilder<O>> {
 ```
 
 一切配置类，将围绕着这两个核心方法进行拓展
+
+
+
+### 如何将 Spring Security 融入到Spring 容器中，并最终汇入Servlet的FilterChain中
+
+
+
+### 权限管理设计实现与异常处理
+
+org.springframework.security.config.annotation.web.AbstractRequestMatcherRegistry
+
+```java
+	public class RequestMatcherConfigurer
+			extends AbstractRequestMatcherRegistry<RequestMatcherConfigurer> {
+    	
+    }
+```
+
+
+
+
+
+org.springframework.security.web.access.intercept.FilterSecurityInterceptor
