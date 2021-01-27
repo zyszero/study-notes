@@ -303,6 +303,7 @@ public class WebFluxConfigurationSupport implements ApplicationContextAware {
 ```java
 public class HttpWebHandlerAdapter extends WebHandlerDecorator implements HttpHandler {
     ...
+    // 这里注入DispatcherHandler
 	public HttpWebHandlerAdapter(WebHandler delegate) {
 		super(delegate);
 	}
