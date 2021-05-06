@@ -1,2 +1,2 @@
 # study-notes
-Record my syudy notes
+Record my study notes
