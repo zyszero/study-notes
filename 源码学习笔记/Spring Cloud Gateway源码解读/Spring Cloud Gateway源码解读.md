@@ -2,7 +2,7 @@
 
 深入学习Spring Cloud Gateway需要掌握的知识：
 
-![image-20201115223715790](C:\study\study-notes\源码学习笔记\Spring Cloud Gateway源码解读\images\01.png)
+![image-20201115223715790](\images\01.png)
 
 ## RouterFunction
 
@@ -405,7 +405,7 @@ public interface WebHandler {
 }
 ```
 
-![image-20201115234112294](C:\study\study-notes\源码学习笔记\Spring Cloud Gateway源码解读\images\03.png)
+![image-20201115234112294](\images\03.png)
 
 如何将DispatcherHandler、HttpWebHandlerAdapter、FilteringWebHandler、ExceptionHandlingWebHandler糅合在一起？
 
@@ -699,7 +699,7 @@ public class GatewayAutoConfiguration {
 
 ## GlobalFilter
 
-![image-20201118232408594](C:\study\study-notes\源码学习笔记\Spring Cloud Gateway源码解读\images\05)
+![image-20201118232408594](\images\05)
 
 GlobalFilter与GatewayFilterFactory类似，都是在GatewayAutoConfiguration中通过@Bean加入到Spring容器中
 
