@@ -1,2 +1,2 @@
-存放一些学习笔记
-
+# study-notes
+Record my study notes
